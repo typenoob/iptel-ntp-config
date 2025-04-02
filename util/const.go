@@ -1,0 +1,4 @@
+package util
+
+const UNKNOWN_DEVICE = "UNKNOWN"
+const HISTORY_DEVICE = "HISTORY"
