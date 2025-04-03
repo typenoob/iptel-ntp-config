@@ -2,6 +2,7 @@ package driver
 
 import (
 	"errors"
+	"log"
 	"net"
 	"time"
 
@@ -21,9 +22,10 @@ type IPOrNet interface {
 }
 
 type NTPConfig struct {
-	ip    net.IP
-	ipNet *net.IPNet
-	ntp   net.IP
+	ip     net.IP
+	ipNet  *net.IPNet
+	ntp    net.IP
+	driver NTPConfigDriver
 }
 
 type DeviceConfig struct {
@@ -36,16 +38,23 @@ type DeviceConfig struct {
 	TestUri  string
 }
 
-func (n *NTPConfig) ProbeWebService() error {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(n.ip.String(), "80"), 2*time.Second)
+type X func(ip net.IP, ntp net.IP) *_log.Entry
+
+func (n NTPConfig) GetWebHandler(ip net.IP) func() *_log.Entry {
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip.String(), "80"), 2*time.Second)
 	if conn != nil {
 		defer conn.Close()
 	}
 	if err != nil {
-		// 若此IP未启用web服务
-		return err
+		log.Println(err)
+		// 若此IP未启用web服务，则跳过
+		return func() *_log.Entry {
+			return nil
+		}
 	}
-	return nil
+	return func() *_log.Entry {
+		return n.driver.setNTP(ip, n.ntp)
+	}
 }
 
 func (n *NTPConfig) Reload(s string) error {
@@ -61,18 +70,22 @@ func (n *NTPConfig) Reload(s string) error {
 	return errors.New("错误：输入的参数既不是IP地址也不是IP段！")
 }
 
-func (n NTPConfig) ExecuteAndLog(driver NTPConfigDriver) {
+func (n *NTPConfig) SetDriver(driver NTPConfigDriver) {
+	n.driver = driver
+}
+
+func (n NTPConfig) ExecuteAndLog() {
 	if n.ipNet != nil {
 		var entries []_log.Entry
 		util.IterateCIDR(n.ipNet, func(ip net.IP) {
-			res := driver.setNTP(ip, n.ntp)
+			res := n.GetWebHandler(ip)()
 			if res != nil {
 				entries = append(entries, *res)
 			}
 		})
 		_log.BulkAppend(entries)
 	} else {
-		_log.AppendNonNil(driver.setNTP(n.ip, n.ntp))
+		_log.AppendNonNil(n.GetWebHandler(n.ip)())
 	}
 	// 追加所有驱动都不匹配的记录
 	for key, value := range _log.IPNameMap {

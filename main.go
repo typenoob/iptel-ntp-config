@@ -22,14 +22,9 @@ func main() {
 			if err != nil {
 				log.Println(err)
 			}
+			config.SetDriver(newDriver())
 			config.Reload(arg)
-			err = config.ProbeWebService()
-			if err != nil {
-				log.Println(err)
-				// 若此IP未启用web服务则跳过
-				break
-			}
-			config.ExecuteAndLog(newDriver())
+			config.ExecuteAndLog()
 		}
 	}
 	_log.GenerateReport()
