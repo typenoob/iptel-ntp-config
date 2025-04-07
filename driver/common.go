@@ -62,10 +62,12 @@ func (n *NTPConfig) Reload(s string) error {
 	if err == nil {
 		n.ip = ip
 		n.ipNet = ipNet
+		return nil
 	}
 	ip = net.ParseIP(s)
 	if ip != nil {
 		n.ip = ip
+		return nil
 	}
 	return errors.New("错误：输入的参数既不是IP地址也不是IP段！")
 }
