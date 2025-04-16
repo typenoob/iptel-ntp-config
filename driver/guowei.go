@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -70,7 +71,14 @@ func (e *Guowei) setNTP(ip net.IP, ntp net.IP, ntp2 net.IP) *_log.Entry {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	auth := strings.TrimSpace(string(rawAuth))
+	re := regexp.MustCompile(`[a-z0-9]{16}`)
+	matches := re.FindAllString(string(rawAuth), -1)
+	if len(matches) != 1 {
+		log.Println("认证失败")
+		return nil
+	}
+	auth := matches[0]
+	log.Println(auth)
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	url, _ := url.Parse(fmt.Sprintf("http://%s", ip))
