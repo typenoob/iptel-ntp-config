@@ -78,7 +78,6 @@ func (e *Guowei) setNTP(ip net.IP, ntp net.IP, ntp2 net.IP) *_log.Entry {
 		return nil
 	}
 	auth := matches[0]
-	log.Println(auth)
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	url, _ := url.Parse(fmt.Sprintf("http://%s", ip))

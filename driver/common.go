@@ -114,7 +114,6 @@ func (n NTPConfig) ExecuteAndLog() {
 		})
 		_log.BulkAppend(entries)
 	} else {
-		log.Println(n.GetWebHandler(n.ip))
 		_log.AppendNonNil(n.GetWebHandler(n.ip)())
 	}
 	// 追加所有驱动都不匹配的记录
