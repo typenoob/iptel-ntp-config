@@ -32,7 +32,7 @@ func GetDriverList() []string {
 	return keys
 }
 
-func NewNTPConfig(ntp net.IP) NTPConfig {
+func NewNTPConfig(ntp net.IP, ntp2 net.IP) NTPConfig {
 	_log.NewIPNameMap(ntp)
-	return NTPConfig{ntp: ntp}
+	return NTPConfig{ntp: ntp, ntp2: ntp2}
 }

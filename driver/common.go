@@ -2,8 +2,10 @@ package driver
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"time"
 
 	_log "github.com/typenoob/iptel-ntp-config/log"
@@ -11,8 +13,8 @@ import (
 )
 
 type NTPConfigDriver interface {
-	setNTP(ip net.IP, ntp net.IP) *_log.Entry
-	getNTP(ip net.IP) *net.IP
+	setNTP(ip net.IP, ntp net.IP, ntp2 net.IP) *_log.Entry
+	getNTP(ip net.IP) (*net.IP, *net.IP)
 	IsMatch(ip net.IP) bool
 	GetName() string
 }
@@ -25,6 +27,7 @@ type NTPConfig struct {
 	ip     net.IP
 	ipNet  *net.IPNet
 	ntp    net.IP
+	ntp2   net.IP
 	driver NTPConfigDriver
 }
 
@@ -41,6 +44,17 @@ type DeviceConfig struct {
 type X func(ip net.IP, ntp net.IP) *_log.Entry
 
 func (n NTPConfig) GetWebHandler(ip net.IP) func() *_log.Entry {
+	if _log.GetNameByIP(ip) == util.HISTORY_DEVICE {
+		// 若历史记录中已成功执行，则直接跳过
+		_log.SetNameByIP(ip, n.driver.GetName())
+		return nil
+	}
+	if !_log.GetValid(ip) {
+		// 若其他驱动已判断过该地址无效，则直接跳过
+		return func() *_log.Entry {
+			return nil
+		}
+	}
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip.String(), "80"), 2*time.Second)
 	if conn != nil {
 		defer conn.Close()
@@ -48,12 +62,23 @@ func (n NTPConfig) GetWebHandler(ip net.IP) func() *_log.Entry {
 	if err != nil {
 		log.Println(err)
 		// 若此IP未启用web服务，则跳过
+		_log.SetInvalid(ip)
 		return func() *_log.Entry {
 			return nil
 		}
 	}
+	//----------自动跳过电子时钟-----------
+	resp, err := http.Get(fmt.Sprintf("http://%s/web/heading_iot_clock.jpg", ip))
+	if err == nil && resp.StatusCode == http.StatusOK {
+		_log.SetInvalid(ip)
+		return func() *_log.Entry {
+			return nil
+		}
+	}
+	////----------------------------------
+	_log.SetValid(ip)
 	return func() *_log.Entry {
-		return n.driver.setNTP(ip, n.ntp)
+		return n.driver.setNTP(ip, n.ntp, n.ntp2)
 	}
 }
 

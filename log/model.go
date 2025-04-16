@@ -47,6 +47,8 @@ func (e EntryList) Swap(i, j int) {
 
 var entries EntryList
 
+var validMap map[string]bool
+
 var IPNameMap map[string]string
 
 func BulkAppend(e []Entry) {
@@ -83,6 +85,19 @@ func SetNameByIP(ip net.IP, name string) {
 	}
 }
 
+func SetValid(ip net.IP) {
+	validMap[ip.String()] = true
+}
+
+func SetInvalid(ip net.IP) {
+	validMap[ip.String()] = false
+}
+
+func GetValid(ip net.IP) bool {
+	value, exists := validMap[ip.String()]
+	return value || !exists
+}
+
 func GenerateReport() {
 	fmt.Printf("%s%s%s%s%s%s\n",
 		padString("IP 地址", 15), padString("结果", 10), padString("消息", 25),
@@ -111,4 +126,5 @@ func GenerateReport() {
 
 func init() {
 	entries = readFromJSON()
+	validMap = make(map[string]bool)
 }

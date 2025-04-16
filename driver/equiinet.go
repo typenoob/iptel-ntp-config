@@ -19,20 +19,15 @@ type Equiinet struct {
 	config DeviceConfig
 }
 
-func (e *Equiinet) setNTP(ip net.IP, ntp net.IP) *_log.Entry {
+func (e *Equiinet) setNTP(ip net.IP, ntp net.IP, ntp2 net.IP) *_log.Entry {
 	if !e.IsMatch(ip) {
 		_log.SetNameByIP(ip, util.UNKNOWN_DEVICE)
 		// 若驱动不匹配，无需执行
 		return nil
 	}
-	if _log.GetNameByIP(ip) == util.HISTORY_DEVICE {
-		// 若历史记录中已成功执行，无需执行
-		_log.SetNameByIP(ip, e.name)
-		return nil
-	}
 	_log.SetNameByIP(ip, e.name)
 	res := new(_log.Entry)
-	payload := fmt.Sprintf(e.config.Payload, ntp)
+	payload := fmt.Sprintf(e.config.Payload, ntp, ntp2)
 	req := dac.NewRequest(e.config.Username, e.config.Password, "POST", fmt.Sprintf(e.config.SetUri, ip), payload)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
 	resp, err := req.Execute()
@@ -59,7 +54,7 @@ func (e *Equiinet) setNTP(ip net.IP, ntp net.IP) *_log.Entry {
 	return res
 }
 
-func (e *Equiinet) getNTP(ip net.IP) *net.IP {
+func (e *Equiinet) getNTP(ip net.IP) (*net.IP, *net.IP) {
 	var res map[string]any
 	const USERNAME = "admin"
 	const PASSWORD = "admin"
@@ -69,7 +64,7 @@ func (e *Equiinet) getNTP(ip net.IP) *net.IP {
 	if err != nil {
 		log.Println(err)
 		// 若服务器主动关闭请求则跳过
-		return nil
+		return nil, nil
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
@@ -80,10 +75,11 @@ func (e *Equiinet) getNTP(ip net.IP) *net.IP {
 	if err != nil {
 		log.Println(err)
 		// 返回的不是JSON则跳过
-		return nil
+		return nil, nil
 	}
 	ntp := net.ParseIP(res["primaryNtp"].(string))
-	return &ntp
+	ntp2 := net.ParseIP(res["secondaryNtp"].(string))
+	return &ntp, &ntp2
 }
 
 func (e *Equiinet) IsMatch(ip net.IP) bool {
@@ -105,7 +101,7 @@ func init() {
 			Name:     NAME,
 			Username: "admin",
 			Password: "admin",
-			Payload:  "dhcpTime=0&timeZone=92&primaryNtp=%s&secondaryNtp=time.windows.com&updateInterval=1000&daylight=0&fixedType=0&startMonth=1&startDate=1&startHourDay=0&startDayWeek=0&startWeekMonth=1&stopMonth=1&stopDate=1&stopHourDay=0&stopDayWeek=0&stopWeekMonth=1&offset=0&manualTime=0&dateYmd=&timeHms=&timeFormat=0&dateFormat=0&backlightTime=60&backlightLevel=9&ringTones=1&user_set_phone_preference",
+			Payload:  "dhcpTime=0&timeZone=92&primaryNtp=%s&secondaryNtp=%s&updateInterval=1000&daylight=0&fixedType=0&startMonth=1&startDate=1&startHourDay=0&startDayWeek=0&startWeekMonth=1&stopMonth=1&stopDate=1&stopHourDay=0&stopDayWeek=0&stopWeekMonth=1&offset=0&manualTime=0&dateYmd=&timeHms=&timeFormat=0&dateFormat=0&backlightTime=60&backlightLevel=9&ringTones=1&user_set_phone_preference",
 			SetUri:   "http://%s/cgi-bin/web_cgi_main.cgi?user_set_phone_preference",
 			GetUri:   "http://%s/cgi-bin/web_cgi_main.cgi?user_get_phone_preference",
 			TestUri:  "http://%s/images/earth.png",
