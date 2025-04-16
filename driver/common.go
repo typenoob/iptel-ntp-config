@@ -47,7 +47,9 @@ func (n NTPConfig) GetWebHandler(ip net.IP) func() *_log.Entry {
 	if _log.GetNameByIP(ip) == util.HISTORY_DEVICE {
 		// 若历史记录中已成功执行，则直接跳过
 		_log.SetNameByIP(ip, n.driver.GetName())
-		return nil
+		return func() *_log.Entry {
+			return nil
+		}
 	}
 	if !_log.GetValid(ip) {
 		// 若其他驱动已判断过该地址无效，则直接跳过
@@ -112,6 +114,7 @@ func (n NTPConfig) ExecuteAndLog() {
 		})
 		_log.BulkAppend(entries)
 	} else {
+		log.Println(n.GetWebHandler(n.ip))
 		_log.AppendNonNil(n.GetWebHandler(n.ip)())
 	}
 	// 追加所有驱动都不匹配的记录
